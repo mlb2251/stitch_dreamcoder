@@ -540,6 +540,7 @@ let compression_worker connection ~inline ~arity ~bs ~topK g frontiers =
   done;;
 
 let compression_step_master ~inline ~nc ~structurePenalty ~aic ~pseudoCounts ~lc_score ?arity:(arity=3) ~bs ~topI ~topK g frontiers language_alignments =
+  let start_time = Time.now () in
 
   let sockets = ref [] in
   let timestamp = Time.now() |> Time.to_filename_string ~zone:Time.Zone.utc in
@@ -571,7 +572,6 @@ let compression_step_master ~inline ~nc ~structurePenalty ~aic ~pseudoCounts ~lc
     in
     partition residual xs
   in
-  let start_time = Time.now () in
   divide_work_fairly nc frontiers |> List.iter ~f:fork_worker;
 
   (* Now that we have created the workers, we can make our own sockets *)
@@ -624,7 +624,11 @@ let compression_step_master ~inline ~nc ~structurePenalty ~aic ~pseudoCounts ~lc
   in
   Printf.eprintf "Trimmed down the beam, have only %d best candidates\n"
     (List.length candidates);
+  Printf.eprintf "Timing point 1 (from start of compression_step_master to having 300 candidates): %s.\n"
+  (Time.diff (Time.now ()) start_time |> Time.Span.to_string);
   flush_everything();
+
+  let start_time_rewrite = Time.now () in
 
   match candidates with
   | [] -> (finish(); None)
@@ -640,6 +644,11 @@ let compression_step_master ~inline ~nc ~structurePenalty ~aic ~pseudoCounts ~lc
   in
   assert (List.length new_frontiers = List.length candidates);
   
+  Printf.eprintf "Timing point 2 (from having 300 candidates to BatchedRewrite under them): %s.\n"
+  (Time.diff (Time.now ()) start_time_rewrite |> Time.Span.to_string);
+
+  let start_time_score = Time.now () in
+
   let score frontiers candidate =
     let new_grammar = uniform_grammar (normalize_invention candidate :: grammar_primitives g) in
     let g',s = grammar_induction_score ~aic ~pseudoCounts ~structurePenalty frontiers new_grammar in
@@ -649,8 +658,9 @@ let compression_step_master ~inline ~nc ~structurePenalty ~aic ~pseudoCounts ~lc
          (string_of_program source)
          (closed_inference source |> string_of_type)
          s;
-       frontiers |> List.iter ~f:(fun f -> Printf.eprintf "%s\n" (string_of_frontier f));
-       Printf.eprintf "\n"; flush_everything());
+       (*frontiers |> List.iter ~f:(fun f -> Printf.eprintf "%s\n" (string_of_frontier f));
+       Printf.eprintf "\n"; flush_everything() *)
+       );
     (g',s)
   in 
   let _,initial_mdl_score = grammar_induction_score ~aic ~structurePenalty ~pseudoCounts
@@ -685,6 +695,9 @@ let compression_step_master ~inline ~nc ~structurePenalty ~aic ~pseudoCounts ~lc
   in
   let _ = Printf.eprintf "Best joint score: %f with %s\n" best_joint_score (string_of_program best_candidate) in
   
+    Printf.eprintf "Timing point 3 (all scoring): %s.\n"
+  (Time.diff (Time.now ()) start_time_score |> Time.Span.to_string);
+
   if best_joint_score < initial_joint_score then
       (Printf.eprintf "No improvement possible with joint score.\n"; finish(); None)
     else
@@ -694,10 +707,15 @@ let compression_step_master ~inline ~nc ~structurePenalty ~aic ~pseudoCounts ~lc
          (string_of_program new_primitive) (closed_inference new_primitive |> canonical_type |> string_of_type);
        flush_everything();
        (* Rewrite the entire frontiers *)
+        let start_time_final_rewrite = Time.now () in
+
        let frontiers'' : frontier list = time_it "rewrote all of the frontiers" (fun () ->
            send @@ FinalFrontier(best_candidate);
            sockets |> List.map ~f:receive |> List.concat)
        in
+           Printf.eprintf "Timing point 4 (rewrite final frontiers): %s.\n"
+      (Time.diff (Time.now ()) start_time_final_rewrite |> Time.Span.to_string);
+
        finish();
        let g'' = inside_outside ~pseudoCounts g' frontiers'' |> fst in
        Some(g'',frontiers''))
@@ -885,7 +903,7 @@ let compression_loop
       | None -> g, frontiers
       | Some(g',frontiers') ->
         illustrate_new_primitive g' (find_new_primitive g g') frontiers';
-        if !verbose_compression && iterations > 1 then
+        if iterations > 1 then
           export_compression_checkpoint ~nc ~structurePenalty ~aic ~topK ~pseudoCounts ~arity ~bs ~topI g' frontiers';
         flush_everything();
         loop (iterations - 1) g' frontiers'

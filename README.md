@@ -18,8 +18,9 @@ opam install ppx_jane core re2 yojson vg cairo2 camlimages menhir ocaml-protoc z
 ```
 3. Run the following from the directory root to build the binaries.
 ```
-make clean; make
+eval `opam config env`; make clean; make
 ```
+
 
 # OLD INSTRUCTIONS:
 

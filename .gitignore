@@ -52,3 +52,4 @@ solvers/geomLib/.merlin
 solvers/logoLib/.merlin
 compression
 solver
+copy.sh
