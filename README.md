@@ -1,3 +1,28 @@
+# Build the OCaml binaries.
+The repository contains prebuilt OCaml binaries that should run on most Linux-based machines. However, to build the OCaml binaries from scratch, you can run the following from the root of the repo.
+
+**important: this was tested on a 16.04 Ubuntu machine, we've seen some crashes during building on other versions**
+
+1. Install OCaml.
+```
+sudo apt install ocaml ; 
+sudo apt install opam ; 
+opam init; opam update; 
+opam switch 4.06.1+flambda ;
+eval `opam config env`;
+```
+2. Install the OCaml requirements.
+```
+opam depext ppx_jane core re2 yojson vg cairo2 camlimages menhir ocaml-protoc zmq; 
+opam install ppx_jane core re2 yojson vg cairo2 camlimages menhir ocaml-protoc zmq;
+```
+3. Run the following from the directory root to build the binaries.
+```
+make clean; make
+```
+
+# OLD INSTRUCTIONS:
+
 #  Leveraging Language for Abstraction and Program Search 
 
 This repository is the official implementation of Leveraging Language for Abstraction and Program Search (ICML 2021, Wong et. al 2021). 
