@@ -40,3 +40,15 @@ tests/out/
 moses_compiled/
 .word_vectors_cache
 .DS_Store
+clevrSolver
+compression
+helmholtz
+logoDrawString
+protonet-tester
+solver
+versionDemo
+solvers/.merlin
+solvers/geomLib/.merlin
+solvers/logoLib/.merlin
+compression
+solver
