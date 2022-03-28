@@ -1,3 +1,6 @@
+# IMPORTANT
+T main branch is `icml_2021_supplement` please use that branch for Stitch comparisons!
+
 # Table of contents
 1. [Overview](#overview)
 2. [Getting Started](#getting-started)
