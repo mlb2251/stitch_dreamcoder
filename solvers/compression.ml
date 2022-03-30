@@ -1,5 +1,6 @@
 open Core
 
+open Filename
 
 open Gc
 
@@ -19,6 +20,8 @@ open Versions
 let verbose_compression = ref false;;
 
 let print_topK = ref false;;
+
+let cm_out_dir = ref "compressionMessages";;
 
 (* If this is true, then we collect and report data on the sizes of the version spaces, for each program, and also for each round of inverse beta *)
 let collect_data = ref false;;
@@ -850,7 +853,7 @@ let compression_step ~inline ~structurePenalty ~aic ~pseudoCounts ~lc_score ?ari
 
 let export_compression_checkpoint ~nc ~structurePenalty ~aic ~topK ~pseudoCounts ?arity:(arity=3) ~bs ~topI g frontiers =
   let timestamp = Time.now() |> Time.to_filename_string ~zone:Time.Zone.utc in
-  let fn = Printf.sprintf "compressionMessages/%s" timestamp in
+  let fn = Printf.sprintf "%s%s%s" !cm_out_dir dir_sep timestamp in
 
   let open Yojson.Basic.Util in
   let open Yojson.Basic in
@@ -941,6 +944,30 @@ let () =
   let pseudoCounts = j |> member "pseudoCounts" |> to_float in
   let structurePenalty = j |> member "structurePenalty" |> to_float in
   let lc_score = j |> member "lc_score" |> to_float in
+
+  (* Get the directory to write compressionMessages to from the JSON (if present).
+   * The below is a bit uglier than they "try" pattern used for other fields since
+   * to_string `Null is "null", not an error.
+   * Also, for some reason, LORD KNOWS WHY, to_string returns the string
+   * with enclosing quotation marks, so we need to strip those too.
+   *)
+  let cm_out_dir_val = j |> member "cm_out_dir" in
+  match cm_out_dir_val with 
+  | `Null    -> () ;
+  | _        -> cm_out_dir := String.strip ~drop:(fun c -> Char.equal '"' c) (to_string cm_out_dir_val) ;
+  ;
+
+  (* Not going to do a lot of sanity checking for cm_out_dir, i.e. it better be a valid path
+   * for the filesystem, but will at least strip a single trailing seperator if present
+   * since this will otherwise be duplicated
+   *)
+  if String.is_suffix !cm_out_dir dir_sep then begin
+      Printf.eprintf "Note: stripped \"%s\" from the end of cm_out_dir.\n" dir_sep;
+      cm_out_dir := String.chop_suffix_exn !cm_out_dir dir_sep;
+  end;
+
+  Printf.eprintf "Will write compression messages to cm_out_dir:  %s\n" !cm_out_dir;
+
   verbose_compression := (try
       j |> member "verbose" |> to_bool
                           with _ -> false);
