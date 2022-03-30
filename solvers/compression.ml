@@ -991,16 +991,7 @@ let () =
       Printf.eprintf "Adding topK frontiers to JSON, writing to stdout, then exiting\n";
       let open Yojson.Basic.Util in
       let open Yojson.Basic in
-      let restrict frontier =
-        let restriction =
-          frontier.programs |> List.map ~f:(fun (p,ll) ->
-              (ll+.likelihood_under_grammar g frontier.request p,p,ll)) |>
-          sort_by (fun (posterior,_,_) -> 0.-.posterior) |>
-          List.map ~f:(fun (_,p,ll) -> (p,ll))
-        in
-        {request=frontier.request; programs=List.take restriction topK}
-      in
-      let frontiers = List.map ~f:restrict frontiers in
+      let frontiers = List.map ~f:(restrict ~topK g) frontiers in
       let topK_j = `List(frontiers |> List.map ~f:serialize_frontier) in
       match j with
       | `Assoc(body) ->
