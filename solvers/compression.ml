@@ -737,15 +737,6 @@ let compression_step ~inline ~structurePenalty ~aic ~pseudoCounts ~lc_score ?ari
   let original_frontiers = frontiers in
   let frontiers = ref (List.map ~f:restrict frontiers) in
 
-  if !print_topK then begin
-      Printf.eprintf "Writing topK frontiers to std out as JSON\n";
-      let open Yojson.Basic.Util in
-      let open Yojson.Basic in
-      let j : json = `List(!frontiers |> List.map ~f:serialize_frontier) in
-      Printf.printf "%s\n" (pretty_to_string j);
-      exit 0;
-  end;
-  
   let score g frontiers =
     grammar_induction_score ~aic ~pseudoCounts ~structurePenalty frontiers g
   in
@@ -995,6 +986,30 @@ let () =
                 with _ -> []) in
   let _ = Printf.eprintf "Found %d alignments; \n" (List.length language_alignments) in 
   let language_alignments = language_alignments |> List.map ~f:deserialize_alignment in
+  
+  if !print_topK then begin
+      Printf.eprintf "Adding topK frontiers to JSON, writing to stdout, then exiting\n";
+      let open Yojson.Basic.Util in
+      let open Yojson.Basic in
+      let restrict frontier =
+        let restriction =
+          frontier.programs |> List.map ~f:(fun (p,ll) ->
+              (ll+.likelihood_under_grammar g frontier.request p,p,ll)) |>
+          sort_by (fun (posterior,_,_) -> 0.-.posterior) |>
+          List.map ~f:(fun (_,p,ll) -> (p,ll))
+        in
+        {request=frontier.request; programs=List.take restriction topK}
+      in
+      let frontiers = List.map ~f:restrict frontiers in
+      let topK_j = `List(frontiers |> List.map ~f:serialize_frontier) in
+      match j with
+      | `Assoc(body) ->
+          Printf.printf "%s\n" @@ pretty_to_string @@ `Assoc(("topK_frontiers", topK_j) :: body);
+      | _ ->
+          Printf.eprintf "top type of JSON j was not `Assoc!";
+      ;
+      exit 0;
+  end;
   
   let g, frontiers =
     if aic > 500. then
