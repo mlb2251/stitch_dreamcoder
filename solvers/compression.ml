@@ -968,6 +968,9 @@ let () =
 
   Printf.eprintf "Will write compression messages to cm_out_dir:  %s\n" !cm_out_dir;
 
+  (* Create the path to write to if it does not already exist *)
+  ignore(Unix.system @@ String.concat ~sep:" " ["mkdir -p"; !cm_out_dir]);
+
   verbose_compression := (try
       j |> member "verbose" |> to_bool
                           with _ -> false);
