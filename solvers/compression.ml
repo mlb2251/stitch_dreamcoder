@@ -952,9 +952,9 @@ let () =
    * with enclosing quotation marks, so we need to strip those too.
    *)
   let cm_out_dir_val = j |> member "cm_out_dir" in
-  match cm_out_dir_val with 
+  match cm_out_dir_val with
   | `Null    -> () ;
-  | _        -> cm_out_dir := String.strip ~drop:(fun c -> Char.equal '"' c) (to_string cm_out_dir_val) ;
+  | _        -> cm_out_dir := String.strip ~drop:(Char.equal '"') (to_string cm_out_dir_val) ;
   ;
 
   (* Not going to do a lot of sanity checking for cm_out_dir, i.e. it better be a valid path
