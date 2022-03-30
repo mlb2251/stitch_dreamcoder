@@ -18,6 +18,8 @@ open Versions
 
 let verbose_compression = ref false;;
 
+let print_topK = ref false;;
+
 (* If this is true, then we collect and report data on the sizes of the version spaces, for each program, and also for each round of inverse beta *)
 let collect_data = ref false;;
 
@@ -734,7 +736,7 @@ let compression_step ~inline ~structurePenalty ~aic ~pseudoCounts ~lc_score ?ari
 
   let original_frontiers = frontiers in
   let frontiers = ref (List.map ~f:restrict frontiers) in
-  
+
   let score g frontiers =
     grammar_induction_score ~aic ~pseudoCounts ~structurePenalty frontiers g
   in
@@ -943,6 +945,10 @@ let () =
       j |> member "verbose" |> to_bool
                           with _ -> false);
 
+  print_topK := (try
+      j |> member "print_topK" |> to_bool
+                          with _ -> false);
+
   factored_substitution := (try
                               j |> member "factored_apply" |> to_bool
                             with _ -> false);
@@ -980,6 +986,21 @@ let () =
                 with _ -> []) in
   let _ = Printf.eprintf "Found %d alignments; \n" (List.length language_alignments) in 
   let language_alignments = language_alignments |> List.map ~f:deserialize_alignment in
+  
+  if !print_topK then begin
+      Printf.eprintf "Adding topK frontiers to JSON, writing to stdout, then exiting\n";
+      let open Yojson.Basic.Util in
+      let open Yojson.Basic in
+      let frontiers = List.map ~f:(restrict ~topK g) frontiers in
+      let topK_j = `List(frontiers |> List.map ~f:serialize_frontier) in
+      match j with
+      | `Assoc(body) ->
+          Printf.printf "%s\n" @@ pretty_to_string @@ `Assoc(("topK_frontiers", topK_j) :: body);
+      | _ ->
+          Printf.eprintf "top type of JSON j was not `Assoc!";
+      ;
+      exit 0;
+  end;
   
   let g, frontiers =
     if aic > 500. then
