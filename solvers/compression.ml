@@ -18,6 +18,8 @@ open Versions
 
 let verbose_compression = ref false;;
 
+let print_topK = ref false;;
+
 (* If this is true, then we collect and report data on the sizes of the version spaces, for each program, and also for each round of inverse beta *)
 let collect_data = ref false;;
 
@@ -734,6 +736,15 @@ let compression_step ~inline ~structurePenalty ~aic ~pseudoCounts ~lc_score ?ari
 
   let original_frontiers = frontiers in
   let frontiers = ref (List.map ~f:restrict frontiers) in
+
+  if !print_topK then begin
+      Printf.eprintf "Writing topK frontiers to std out as JSON\n";
+      let open Yojson.Basic.Util in
+      let open Yojson.Basic in
+      let j : json = `List(!frontiers |> List.map ~f:serialize_frontier) in
+      Printf.printf "%s\n" (pretty_to_string j);
+      exit 0;
+  end;
   
   let score g frontiers =
     grammar_induction_score ~aic ~pseudoCounts ~structurePenalty frontiers g
@@ -941,6 +952,10 @@ let () =
   let lc_score = j |> member "lc_score" |> to_float in
   verbose_compression := (try
       j |> member "verbose" |> to_bool
+                          with _ -> false);
+
+  print_topK := (try
+      j |> member "print_topK" |> to_bool
                           with _ -> false);
 
   factored_substitution := (try
