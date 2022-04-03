@@ -908,7 +908,7 @@ let compression_loop
       | None -> g, frontiers
       | Some(g',frontiers') ->
         illustrate_new_primitive g' (find_new_primitive g g') frontiers';
-        if iterations > 1 then
+        if !verbose_compression && iterations > 1 then
           export_compression_checkpoint ~nc ~structurePenalty ~aic ~topK ~pseudoCounts ~arity ~bs ~topI g' frontiers';
         flush_everything();
         loop (iterations - 1) g' frontiers'
