@@ -928,14 +928,61 @@ let compression_loop
 let () =
   let open Yojson.Basic.Util in
   let open Yojson.Basic in
+
+  let is_stitch_mode = (Array.length Sys.argv > 1 && Sys.argv.(1) = "stitch") in
+  let stitch_mode = if is_stitch_mode then Sys.argv.(2) else "none" in
+
+  
+
+  Printf.eprintf "Stitch mode: %s\n" stitch_mode;
+  flush_everything();
+
+  if stitch_mode = "pcfg_score" then begin
+      Printf.eprintf "Note: Use this like ./compression stitch pcfg_score input.json output.json\n";
+      Printf.eprintf "where input.json was the input to the stitch/dreamcoder run and out.json was the output with dsl and frontiers fields\n";
+      flush_everything();
+      let in_json = Yojson.Basic.from_file Sys.argv.(3) in
+      let out_json = Yojson.Basic.from_file Sys.argv.(4) in
+
+      (* from out_json *)
+      let g = out_json |> member "DSL" |> deserialize_grammar |> strip_grammar in
+      let frontiers = out_json |> member "frontiers" |> to_list |> List.map ~f:deserialize_frontier in
+
+      (* from in_json *)
+      let topK = in_json |> member "topK" |> to_int in
+      let aic = in_json |> member "aic" |> to_float in
+      let pseudoCounts = in_json |> member "pseudoCounts" |> to_float in
+      let structurePenalty = in_json |> member "structurePenalty" |> to_float in
+
+      (* let new_grammar = uniform_grammar (normalize_invention candidate :: grammar_primitives g) in *)
+      let topK_frontiers = List.map ~f:(restrict ~topK g) frontiers in
+
+      let g',s = grammar_induction_score ~aic ~pseudoCounts ~structurePenalty frontiers g in
+      Printf.printf "grammar_induction_score non-uniform all: %f\n" s;
+      let g',s = grammar_induction_score ~aic ~pseudoCounts ~structurePenalty topK_frontiers g in
+      Printf.printf "grammar_induction_score non-uniform topK=%d: %f\n" topK s;
+      (* it's not clear what making this uniform does but it does often slightly change the output  *)
+      let g = uniform_grammar (grammar_primitives g) in
+      let g',s = grammar_induction_score ~aic ~pseudoCounts ~structurePenalty frontiers g in
+      Printf.printf "grammar_induction_score uniform all: %f\n" s;
+      let g',s = grammar_induction_score ~aic ~pseudoCounts ~structurePenalty topK_frontiers g in
+      Printf.printf "grammar_induction_score uniform topK=%d: %f\n" topK s;
+      exit 0;
+  end;
+
+
   let j =
-    if Array.length Sys.argv > 1 then
-      (assert (Array.length Sys.argv = 2);
-       Yojson.Basic.from_file Sys.argv.(1))
+    if not is_stitch_mode && Array.length Sys.argv > 1 then
+      (* (assert (Array.length Sys.argv = 2); *)
+       Yojson.Basic.from_file Sys.argv.(1)
     else 
       Yojson.Basic.from_channel Pervasives.stdin
   in
+
+
   let g = j |> member "DSL" |> deserialize_grammar |> strip_grammar in
+  let frontiers = j |> member "frontiers" |> to_list |> List.map ~f:deserialize_frontier in
+
   let topK = j |> member "topK" |> to_int in
   let topI = j |> member "topI" |> to_int in
   let bs = j |> member "bs" |> to_int in
@@ -1006,10 +1053,7 @@ let () =
   in
   Printf.eprintf "Compression backend will run for most %d iterations\n"
     iterations;
-  flush_everything();
-
-  let frontiers = j |> member "frontiers" |> to_list |> List.map ~f:deserialize_frontier in
-  
+  flush_everything();  
   (** Get the language alignments **)
   let language_alignments = (try
                   j |> member "language_alignments" |> to_list 

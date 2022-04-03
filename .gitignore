@@ -53,3 +53,5 @@ solvers/logoLib/.merlin
 compression
 solver
 copy.sh
+copy_dev.sh
+copy_stable.sh
