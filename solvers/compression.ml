@@ -21,7 +21,7 @@ let verbose_compression = ref false;;
 
 let print_topK = ref false;;
 
-let fast_final_rewrite = ref false;;
+(* let fast_final_rewrite = ref false;; *)
 
 let cm_out_dir = ref "compressionMessages";;
 
@@ -494,9 +494,9 @@ let compression_worker connection ~inline ~arity ~bs ~topK g frontiers =
 
   let final_rewrite invention =
     (* As our last act, free as much memory as we can *)
-    if not !fast_final_rewrite then begin
+    (*if not !fast_final_rewrite then begin*)
       deallocate_versions v; Gc.compact();
-    end;
+    (*end;*)
 
     (* exchanging time for memory - invert everything again *)
     frontiers := original_frontiers;
@@ -550,6 +550,7 @@ let compression_worker connection ~inline ~arity ~bs ~topK g frontiers =
 
 let compression_step_master ~inline ~nc ~structurePenalty ~aic ~pseudoCounts ~lc_score ?arity:(arity=3) ~bs ~topI ~topK g frontiers language_alignments =
   let start_time = Time.now () in
+  let comparison_start_time = Unix.gettimeofday () in
 
   let sockets = ref [] in
   let timestamp = Time.now() |> Time.to_filename_string ~zone:Time.Zone.utc in
@@ -633,7 +634,7 @@ let compression_step_master ~inline ~nc ~structurePenalty ~aic ~pseudoCounts ~lc
   in
   Printf.eprintf "Trimmed down the beam, have only %d best candidates\n"
     (List.length candidates);
-  Printf.eprintf "Timing point 1 (from start of compression_step_master to having 300 candidates): %s.\n"
+  Printf.eprintf "Timing point 1 (from start of compression_step_master to having topI candidates): %s.\n"
   (Time.diff (Time.now ()) start_time |> Time.Span.to_string);
   flush_everything();
 
@@ -653,8 +654,17 @@ let compression_step_master ~inline ~nc ~structurePenalty ~aic ~pseudoCounts ~lc
   in
   assert (List.length new_frontiers = List.length candidates);
   
-  Printf.eprintf "Timing point 2 (from having 300 candidates to BatchedRewrite under them): %s.\n"
+  Printf.eprintf "Timing point 2 (from having topI candidates to BatchedRewrite under them): %s.\n"
   (Time.diff (Time.now ()) start_time_rewrite |> Time.Span.to_string);
+
+  Printf.eprintf "sanity check for timing comparison, should be same as comparison point: %s.\n"
+  (Time.diff (Time.now ()) start_time |> Time.Span.to_string);
+  flush_everything();
+
+  Printf.eprintf "Timing Comparison Point (millis): %d\n"
+  ((Unix.gettimeofday () -. comparison_start_time) *. 1000.0 |> int_of_float);
+  flush_everything();
+
 
   let start_time_score = Time.now () in
 
@@ -1025,9 +1035,9 @@ let () =
   verbose_compression := (try
       j |> member "verbose" |> to_bool
                           with _ -> false);
-  fast_final_rewrite := (try
+  (* fast_final_rewrite := (try
       j |> member "fast_final_rewrite" |> to_bool
-                          with _ -> false);
+                          with _ -> false); *)
 
   print_topK := (try
       j |> member "print_topK" |> to_bool
@@ -1043,7 +1053,7 @@ let () =
                    with _ -> false) ;
   if !collect_data then verbose_compression := true;
 
-  if not !fast_final_rewrite then begin
+  (* if not !fast_final_rewrite then begin
    Printf.eprintf "Please pass fast_final_rewrite if you're matt or his friend........\n";
    Printf.eprintf "basically that makes us disable deallocating versions before attempting our final rewrite\n";
    Printf.eprintf "which is important bc in matts test all the programs you ever see are the topK ones\n";
@@ -1053,7 +1063,7 @@ let () =
    Printf.eprintf "closer timing and memory behaviors to what we actually care about measuring\n";
    flush_everything();
    exit 1;
-  end;
+  end; *)
   
   let inline = (try
                   j |> member "inline" |> to_bool
