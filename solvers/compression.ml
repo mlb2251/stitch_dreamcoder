@@ -21,6 +21,8 @@ let verbose_compression = ref false;;
 
 let print_topK = ref false;;
 
+let fast_final_rewrite = ref false;;
+
 let cm_out_dir = ref "compressionMessages";;
 
 (* If this is true, then we collect and report data on the sizes of the version spaces, for each program, and also for each round of inverse beta *)
@@ -492,7 +494,9 @@ let compression_worker connection ~inline ~arity ~bs ~topK g frontiers =
 
   let final_rewrite invention =
     (* As our last act, free as much memory as we can *)
-    deallocate_versions v; Gc.compact();
+    if not !fast_final_rewrite then begin
+      deallocate_versions v; Gc.compact();
+    end;
 
     (* exchanging time for memory - invert everything again *)
     frontiers := original_frontiers;
@@ -1021,6 +1025,9 @@ let () =
   verbose_compression := (try
       j |> member "verbose" |> to_bool
                           with _ -> false);
+  fast_final_rewrite := (try
+      j |> member "fast_final_rewrite" |> to_bool
+                          with _ -> false);
 
   print_topK := (try
       j |> member "print_topK" |> to_bool
@@ -1036,6 +1043,17 @@ let () =
                    with _ -> false) ;
   if !collect_data then verbose_compression := true;
 
+  if not !fast_final_rewrite then begin
+   Printf.eprintf "Please pass fast_final_rewrite if you're matt or his friend........\n";
+   Printf.eprintf "basically that makes us disable deallocating versions before attempting our final rewrite\n";
+   Printf.eprintf "which is important bc in matts test all the programs you ever see are the topK ones\n";
+   Printf.eprintf "so the batched rewrite IS the final rewrite\n";
+   Printf.eprintf "so we might as well reuse that cache and not take forever recreating it, and there arent any more memory fears either\n";
+   Printf.eprintf "bc its not worse than recreating it. This just lets matts things finish sooner and have\n";
+   Printf.eprintf "closer timing and memory behaviors to what we actually care about measuring\n";
+   flush_everything();
+   exit 1;
+  end;
   
   let inline = (try
                   j |> member "inline" |> to_bool
