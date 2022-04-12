@@ -942,21 +942,21 @@ let () =
   flush_everything();
 
   if stitch_mode = "pcfg_score" then begin
-      Printf.eprintf "Note: Use this like ./compression stitch pcfg_score input.json output.json\n";
-      Printf.eprintf "where input.json was the input to the stitch/dreamcoder run and out.json was the output with dsl and frontiers fields\n";
+      Printf.eprintf "Note: Use this like ./compression stitch pcfg_score params_json.json output.json\n";
+      Printf.eprintf "where params_json.json was the input to the stitch/dreamcoder run and out.json was the output with dsl and frontiers fields\n";
       flush_everything();
-      let in_json = Yojson.Basic.from_file Sys.argv.(3) in
-      let out_json = Yojson.Basic.from_file Sys.argv.(4) in
+      let params_json = Yojson.Basic.from_file Sys.argv.(3) in
+      let out_json = if Array.length Sys.argv > 4 then Yojson.Basic.from_file Sys.argv.(4) else params_json in
 
       (* from out_json *)
       let g = out_json |> member "DSL" |> deserialize_grammar |> strip_grammar in
       let frontiers = out_json |> member "frontiers" |> to_list |> List.map ~f:deserialize_frontier in
 
       (* from in_json *)
-      let topK = in_json |> member "topK" |> to_int in
-      let aic = in_json |> member "aic" |> to_float in
-      let pseudoCounts = in_json |> member "pseudoCounts" |> to_float in
-      let structurePenalty = in_json |> member "structurePenalty" |> to_float in
+      let topK = params_json |> member "topK" |> to_int in
+      let aic = params_json |> member "aic" |> to_float in
+      let pseudoCounts = params_json |> member "pseudoCounts" |> to_float in
+      let structurePenalty = params_json |> member "structurePenalty" |> to_float in
 
       (* let new_grammar = uniform_grammar (normalize_invention candidate :: grammar_primitives g) in *)
       let topK_frontiers = List.map ~f:(restrict ~topK g) frontiers in
