@@ -626,6 +626,9 @@ let compression_step_master ~inline ~nc ~structurePenalty ~aic ~pseudoCounts ~lc
     List.sort ~compare:(fun (_,s1) (_,s2) -> Float.compare s1 s2) |> List.map ~f:fst
   in
   let candidates = List.take candidates topI in
+  Printf.eprintf "Timing point -1 right before normalizing: %s.\n"
+  (Time.diff (Time.now ()) start_time |> Time.Span.to_string);
+  flush_everything();
   let candidates = candidates |> List.filter ~f:(fun candidate ->
       try
         let candidate = normalize_invention candidate in
@@ -636,6 +639,10 @@ let compression_step_master ~inline ~nc ~structurePenalty ~aic ~pseudoCounts ~lc
     (List.length candidates);
   Printf.eprintf "Timing point 1 (from start of compression_step_master to having topI candidates): %s.\n"
   (Time.diff (Time.now ()) start_time |> Time.Span.to_string);
+  flush_everything();
+
+    Printf.eprintf "Timing Comparison Point A (vspace+beam) (millis): %d\n"
+  ((Unix.gettimeofday () -. comparison_start_time) *. 1000.0 |> int_of_float);
   flush_everything();
 
   let start_time_rewrite = Time.now () in
@@ -661,7 +668,7 @@ let compression_step_master ~inline ~nc ~structurePenalty ~aic ~pseudoCounts ~lc
   (Time.diff (Time.now ()) start_time |> Time.Span.to_string);
   flush_everything();
 
-  Printf.eprintf "Timing Comparison Point (millis): %d\n"
+  Printf.eprintf "Timing Comparison Point B (vspace+beam+batched_rewrite) (millis): %d\n"
   ((Unix.gettimeofday () -. comparison_start_time) *. 1000.0 |> int_of_float);
   flush_everything();
 
