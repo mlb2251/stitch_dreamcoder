@@ -20,6 +20,8 @@ open Versions
 let verbose_compression = ref false;;
 
 let print_topK = ref false;;
+let no_stopping_criterion = ref false;;
+let no_eta_long = ref false;;
 
 (* let fast_final_rewrite = ref false;; *)
 
@@ -34,6 +36,17 @@ type alignment = {
   score : float;
   primitive_counts : (string*int) list;
 };;
+
+let rec stitch_size = function
+  | Index(_) -> 100
+  | Abstraction(b) -> 1 + (stitch_size b)
+  | Apply(f,x) -> 1 + (stitch_size f) + (stitch_size x)
+  | Primitive(_,_,_) -> 100
+  | Invented(_,_) -> 100
+
+let stitch_utility frontiers =
+  frontiers |> List.map ~f:(fun frontier -> frontier.programs |> List.map ~f:(fun (p,ll) -> stitch_size p) |> fold1 min) |> fold1 (+)
+
 
 (** Score = length of counts * score **)
 let alignment_len_score alignment = 
@@ -140,7 +153,7 @@ let all_initial_alignment_score alignments =
 
 let restrict ~topK g frontier =
   let restriction =
-    frontier.programs |> List.map ~f:(fun (p,ll) ->
+    frontier.programs |> List.map ~f:(fun (p,ll) -> if !no_eta_long then (ll,p,ll) else
         (ll+.likelihood_under_grammar g frontier.request p,p,ll)) |>
     sort_by (fun (posterior,_,_) -> 0.-.posterior) |>
     List.map ~f:(fun (_,p,ll) -> (p,ll))
@@ -149,6 +162,7 @@ let restrict ~topK g frontier =
 
 
 let inside_outside ~pseudoCounts g (frontiers : frontier list) =
+  if !no_eta_long then (g,0.) else
   let summaries = frontiers |> List.map ~f:(fun f ->
       f.programs |> List.map ~f:(fun (p,l) ->
           let s = make_likelihood_summary g f.request p in
@@ -208,6 +222,7 @@ let grammar_induction_score ~aic ~structurePenalty ~pseudoCounts frontiers g =
 exception EtaExpandFailure;;
 
 let eta_long request e =
+  if !no_eta_long then e else
   let context = ref empty_context in
 
   let make_long e request =
@@ -448,7 +463,7 @@ let compression_worker connection ~inline ~arity ~bs ~topK g frontiers =
                       in 
                       let program' =
                         try rewriter frontier.request program
-                        with EtaExpandFailure -> originalProgram
+                        with EtaExpandFailure -> (Printf.eprintf "EtaExpandFailure during rewrite_with_invention site 1"; originalProgram)
                       in
                       (program',ll))
                 in 
@@ -484,7 +499,7 @@ let compression_worker connection ~inline ~arity ~bs ~topK g frontiers =
                         assert (false));
                       let program' =
                         try rewriter frontier.request program
-                        with EtaExpandFailure -> originalProgram
+                        with EtaExpandFailure -> (Printf.eprintf "EtaExpandFailure during rewrite_with_invention site 2"; originalProgram)
                       in
                       (program',ll))
                 in 
@@ -523,7 +538,7 @@ let compression_worker connection ~inline ~arity ~bs ~topK g frontiers =
                     in 
                     let program' =
                       try rewrite_with_invention invention frontier.request program
-                      with EtaExpandFailure -> originalProgram
+                      with EtaExpandFailure -> (Printf.eprintf "EtaExpandFailure during rewrite_with_invention site 3"; originalProgram)
                     in
                     (program',ll))
               in 
@@ -693,6 +708,11 @@ let compression_step_master ~inline ~nc ~structurePenalty ~aic ~pseudoCounts ~lc
       (frontiers |> List.map ~f:(restrict ~topK g)) g
   in
   Printf.eprintf "Initial score: %f\n" initial_mdl_score;
+
+  if compare initial_mdl_score nan = 0 then
+    (Printf.eprintf "nan for initial_mdl_score, failing";
+    exit 1);
+
   
   let language_score language_alignments candidate =  all_rewrite_alignments_score language_alignments candidate
   in 
@@ -724,7 +744,7 @@ let compression_step_master ~inline ~nc ~structurePenalty ~aic ~pseudoCounts ~lc
     Printf.eprintf "Timing point 3 (all scoring): %s.\n"
   (Time.diff (Time.now ()) start_time_score |> Time.Span.to_string);
 
-  if best_joint_score < initial_joint_score then
+  if (not !no_stopping_criterion) && (best_joint_score < initial_joint_score) then
       (Printf.eprintf "No improvement possible with joint score.\n"; finish(); None)
     else
       (let new_primitive = grammar_primitives g' |> List.hd_exn in
@@ -750,7 +770,7 @@ let compression_step_master ~inline ~nc ~structurePenalty ~aic ~pseudoCounts ~lc
 let compression_step ~inline ~structurePenalty ~aic ~pseudoCounts ~lc_score ?arity:(arity=3) ~bs ~topI ~topK g frontiers language_alignments =
   let restrict frontier =
     let restriction =
-      frontier.programs |> List.map ~f:(fun (p,ll) ->
+      frontier.programs |> List.map ~f:(fun (p,ll) -> if !no_eta_long then (ll,p,ll) else
           (ll+.likelihood_under_grammar g frontier.request p,p,ll)) |>
       sort_by (fun (posterior,_,_) -> 0.-.posterior) |>
       List.map ~f:(fun (_,p,ll) -> (p,ll))
@@ -818,7 +838,7 @@ let compression_step ~inline ~structurePenalty ~aic ~pseudoCounts ~lc_score ?ari
                       let program = minimal_inhabitant new_cost_table ~given:(Some(i)) index |> get_some in 
                       let program' =
                         try rewriter frontier.request program
-                        with EtaExpandFailure -> originalProgram
+                        with EtaExpandFailure -> (Printf.eprintf "EtaExpandFailure during rewrite_with_invention site 4"; originalProgram)
                       in
                       (program',ll))
                 in 
@@ -855,7 +875,7 @@ let compression_step ~inline ~structurePenalty ~aic ~pseudoCounts ~lc_score ?ari
           (s,g',frontiers',i))
       |> minimum_by (fun (s,_,_,_) -> -.s)) in
 
-    if best_score < initial_score then
+    if (not !no_stopping_criterion) && (best_score < initial_score) then
       (Printf.eprintf "No improvement possible.\n"; None)
     else
       (let new_primitive = grammar_primitives g' |> List.hd_exn in
@@ -949,6 +969,8 @@ let compression_loop
 let () =
   let open Yojson.Basic.Util in
   let open Yojson.Basic in
+
+  (* cogsci (); *)
 
   let is_stitch_mode = (Array.length Sys.argv > 1 && Sys.argv.(1) = "stitch") in
   let stitch_mode = if is_stitch_mode then Sys.argv.(2) else "none" in
@@ -1048,6 +1070,12 @@ let () =
 
   print_topK := (try
       j |> member "print_topK" |> to_bool
+                          with _ -> false);
+  no_stopping_criterion := (try
+      j |> member "no_stopping_criterion" |> to_bool
+                          with _ -> false);
+  no_eta_long := (try
+      j |> member "no_eta_long" |> to_bool
                           with _ -> false);
 
   factored_substitution := (try

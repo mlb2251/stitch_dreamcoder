@@ -343,6 +343,8 @@ let [@warning "-20"] primitive ?manualLaziness:(manualLaziness = false)
                           name number_of_arguments name))
   in
   let p = Primitive(t,name, ref (magical x)) in
+  if (Hashtbl.mem every_primitive name) then
+    Printf.eprintf "already present %s\n" name;
   assert (not (Hashtbl.mem every_primitive name));
   ignore(Hashtbl.add every_primitive name p);
   p
@@ -1430,3 +1432,112 @@ let primitive_rrevcdr = primitive "_rrevcdr" ((tlist tsubstr) @> (tlist tsubstr)
   let slice = Array.sub arr 0 (Array.length arr - 1) in
   Array.to_list slice
   );; 
+
+let tfloat = make_ground "tfloat";;
+let ttransmat = make_ground "ttransmat";;
+let tstroke = make_ground "tstroke";;
+
+(* let cogsci () = *)
+  ignore(primitive "graphics_pi" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_0.5" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_0.75" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_1.5" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_1" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_1.25" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_1.75" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_2" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_2.25" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_2.5" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_2.75" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_3" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_3.25" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_3.5" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_4" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_5" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_6" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_3.75" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_8" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_9" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_10" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_11" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_4.25" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_4.5" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_4.75" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_5.25" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_5.5" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_5.75" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_0" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_0.25" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_6.25" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_6.5" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_6.75" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_-0.75" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_-0.5" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_7" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_7.25" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_7.5" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_7.75" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_-0.25" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_8.25" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_8.5" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_8.75" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_9.25" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_9.5" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_9.75" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_12" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_-1.25" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_-2.5" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_-2.25" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_-2" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_-1" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_-1.5" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_-3" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_-2.75" (tfloat) (fun x -> x));;
+  ignore(primitive "graphics_-1.75" (tfloat) (fun x -> x));;
+
+  ignore(primitive "graphics_-" (tfloat @> tfloat @> tfloat) (fun x -> x));;
+  ignore(primitive "graphics_+" (tfloat @> tfloat @> tfloat) (fun x -> x));;
+  ignore(primitive "graphics_*" (tfloat @> tfloat @> tfloat) (fun x -> x));;
+  ignore(primitive "graphics_/" (tfloat @> tfloat @> tfloat) (fun x -> x));;
+  ignore(primitive "graphics_pow" (tfloat @> tfloat @> tfloat) (fun x -> x));;
+  ignore(primitive "graphics_sin" (tfloat @> tfloat) (fun x -> x));;
+  ignore(primitive "graphics_cos" (tfloat @> tfloat) (fun x -> x));;
+  ignore(primitive "graphics_tan" (tfloat @> tfloat) (fun x -> x));;
+  ignore(primitive "graphics_max" (tfloat @> tfloat @> tfloat) (fun x -> x));;
+  ignore(primitive "graphics_min" (tfloat @> tfloat @> tfloat) (fun x -> x));;
+  ignore(primitive "graphics_M" (tfloat @> tfloat @> tfloat @> tfloat @> ttransmat) (fun x -> x));;
+  ignore(primitive "graphics_T" (tstroke @> ttransmat @> tstroke) (fun x -> x));;
+  ignore(primitive "graphics_C" (tstroke @> tstroke @> tstroke) (fun x -> x));;
+  ignore(primitive "graphics_repeat" (tstroke @> tfloat @> ttransmat @> tstroke) (fun x -> x));;
+
+  ignore(primitive "graphics_empt" (tstroke) (fun x -> x));;
+  ignore(primitive "graphics_l" (tstroke) (fun x -> x));;
+  ignore(primitive "graphics_c" (tstroke) (fun x -> x));;
+  ignore(primitive "graphics_r" (tstroke) (fun x -> x));;
+  ignore(primitive "graphics_r_s" (tfloat @> tfloat @> tstroke) (fun x -> x));;
+  (* () *)
+(* ;; *)
+
+let ttowersstate = make_ground "ttowersstate";;
+
+  ignore(primitive "towers_t" (ttowersstate @> ttowersstate) (fun x -> x));;
+  ignore(primitive "towers_h" (ttowersstate @> ttowersstate) (fun x -> x));;
+  ignore(primitive "towers_r" (tint @> ttowersstate @> ttowersstate) (fun x -> x));;
+  ignore(primitive "towers_l" (tint @> ttowersstate @> ttowersstate) (fun x -> x));;
+  ignore(primitive "towers_1" (tint) (fun x -> x));;
+  ignore(primitive "towers_2" (tint) (fun x -> x));;
+  ignore(primitive "towers_3" (tint) (fun x -> x));;
+  ignore(primitive "towers_4" (tint) (fun x -> x));;
+  ignore(primitive "towers_5" (tint) (fun x -> x));;
+  ignore(primitive "towers_6" (tint) (fun x -> x));;
+  ignore(primitive "towers_7" (tint) (fun x -> x));;
+  ignore(primitive "towers_8" (tint) (fun x -> x));;
+  ignore(primitive "towers_9" (tint) (fun x -> x));;
+  ignore(primitive "towers_10" (tint) (fun x -> x));;
+  ignore(primitive "towers_11" (tint) (fun x -> x));;
+  ignore(primitive "towers_12" (tint) (fun x -> x));;
+  ignore(primitive "towers_13" (tint) (fun x -> x));;
+  ignore(primitive "towers_14" (tint) (fun x -> x));;
+
+
+(* cogsci ();; *)
